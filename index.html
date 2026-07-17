@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Sistema de Gestión</title>
+  
+  <!-- ==========================================
+       MÓDULO: ESTILOS (CSS CONFIGURABLE)
+       ========================================== -->
+  <style>
+    :root {
+      /* COLORES PRINCIPALES */
+      --color-fondo: #f4f6f9;
+      --color-panel: #ffffff;
+      --color-primario: #0056b3;
+      --color-primario-hover: #004494;
+      --color-exito: #28a745;
+      --color-peligro: #dc3545;
+      --color-texto: #333333;
+      --color-borde: #cccccc;
+      
+      /* MEDIDAS Y FORMATOS */
+      --radio-borde: 8px;
+      --espaciado-panel: 25px;
+      --tamano-fuente-base: 16px;
+      --fuente-familia: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      --ancho-max-login: 400px;
+      --ancho-max-app: 1200px;
+    }
+
+    body {
+      font-family: var(--fuente-familia);
+      background-color: var(--color-fondo);
+      color: var(--color-texto);
+      margin: 0; padding: 0;
+      font-size: var(--tamano-fuente-base);
+    }
+    .panel {
+      background-color: var(--color-panel);
+      padding: var(--espaciado-panel);
+      border-radius: var(--radio-borde);
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      margin: 20px auto;
+    }
+    input[type="text"], input[type="password"], input[type="number"], select {
+      width: 100%; padding: 10px; margin: 8px 0 15px;
+      border: 1px solid var(--color-borde);
+      border-radius: var(--radio-borde);
+      box-sizing: border-box;
+    }
+    .btn {
+      background-color: var(--color-primario); color: white;
+      padding: 10px 20px; border: none; border-radius: var(--radio-borde);
+      cursor: pointer; font-weight: bold; transition: background 0.3s;
+    }
+    .btn:hover { background-color: var(--color-primario-hover); }
+    .btn-salir { background-color: var(--color-peligro); float: right;}
+    .btn-accion { background-color: var(--color-exito); width: 100%; margin-top: 10px;}
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid var(--color-borde); padding: 10px; text-align: left; }
+    th { background-color: var(--color-primario); color: white; }
+    #app-container { display: none; max-width: var(--ancho-max-app); margin: 0 auto; padding: 20px; }
+    #login-container { max-width: var(--ancho-max-login); margin: 100px auto; }
+    .nav-tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid var(--color-borde); padding-bottom: 10px;}
+    .tab { cursor: pointer; padding: 10px 20px; border-radius: var(--radio-borde); background: #eee; }
+    .tab.active { background: var(--color-primario); color: white; }
+    .seccion { display: none; }
+    .seccion.active { display: block; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+  </style>
+</head>
+<body>
+
+  <!-- VISTA 1: INGRESO -->
+  <div id="login-container" class="panel">
+    <h2 style="text-align: center;">Acceso al Sistema</h2>
+    <form id="form-login" autocomplete="off" onsubmit="event.preventDefault(); iniciarSesion();">
+      <label>Usuario:</label>
+      <input type="text" id="user" required>
+      <label>Contraseña:</label>
+      <input type="password" id="pass" required>
+      <button type="submit" class="btn" style="width: 100%;">Ingresar</button>
+      <p id="msg-login" style="color: var(--color-peligro); text-align: center;"></p>
+    </form>
+  </div>
+
+  <!-- VISTA 2: APLICACIÓN -->
+  <div id="app-container">
+    <button class="btn btn-salir" onclick="cerrarSesion()">Cerrar Sesión</button>
+    <h2>Consola de Administración</h2>
+    
+    <div class="nav-tabs">
+      <div class="tab active" onclick="cambiarPestana('buscador')">Buscador</div>
+      <div class="tab" onclick="cambiarPestana('ingresos')">Registrar Ingreso</div>
+      <div class="tab" onclick="cambiarPestana('salidas')">Registrar Salida</div>
+    </div>
+
+    <!-- SECCIÓN: BUSCADOR -->
+    <div id="sec-buscador" class="seccion active panel">
+      <h3>Buscar en Inventario</h3>
+      <div style="display: flex; gap: 10px; align-items: center;">
+        <input type="text" id="busq-texto" placeholder="Buscar producto (Mín. 3 letras)...">
+        <select id="busq-general">
+          <option value="TODO">Búsqueda en todo</option>
+          <option value="espuma">Espuma</option>
+          <option value="herramienta">Herramienta</option>
+          <option value="solventes">Solventes</option>
+          <option value="madera">Madera</option>
+          <option value="tornilleria">Tornillería</option>
+        </select>
+        <select id="busq-especifica">
+          <option value="">Sin filtro específico</option>
+          <option value="MEDIDAS">Medidas</option>
+          <option value="DENSIDAD">Densidad</option>
+        </select>
+        <input type="text" id="busq-val-especifico" placeholder="Valor" style="display:none;">
+        <button class="btn" onclick="ejecutarBusqueda()">Buscar</button>
+      </div>
+      <div style="overflow-x: auto;">
+        <table>
+          <thead><tr id="tabla-head"></tr></thead>
+          <tbody id="tabla-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- SECCIÓN: INGRESOS -->
+    <div id="sec-ingresos" class="seccion panel">
+      <h3>Registro de Ingresos</h3>
+      <form id="form-ingresos">
+        <div class="form-grid">
+          <div><label>Nombre/Producto:</label><input type="text" id="ing-nombre" list="lista-inventario" onchange="verificarSiExiste('ing')" required><small id="ing-aviso"></small></div>
+          <div><label>Tipo:</label><input type="text" id="ing-tipo" required></div>
+          <div><label>Unidad de Medida:</label><input type="text" id="ing-unidad" required></div>
+          <div><label>Medidas:</label><input type="text" id="ing-medidas"></div>
+          <div><label>Densidad:</label><input type="text" id="ing-densidad"></div>
+          <div><label>Cantidad:</label><input type="number" step="0.01" id="ing-cantidad" required oninput="calcularTotal('ing')"></div>
+          <div><label>Precio:</label><input type="number" step="0.01" id="ing-precio" required oninput="calcularTotal('ing')"></div>
+          <div><label>Total:</label><input type="number" id="ing-total" readonly></div>
+          <div><label>Proveedor:</label><input type="text" id="ing-proveedor"></div>
+          <div><label>Entregó a:</label><select id="ing-entregoa" required></select></div>
+          <div style="grid-column: span 2;"><label>Descripción:</label><input type="text" id="ing-descripcion"></div>
+        </div>
+        <button type="button" class="btn btn-accion" onclick="guardarTransaccion('INGRESO')">Registrar Ingreso</button>
+      </form>
+    </div>
+
+    <!-- SECCIÓN: SALIDAS -->
+    <div id="sec-salidas" class="seccion panel">
+      <h3>Registro de Salidas</h3>
+      <form id="form-salidas">
+        <div class="form-grid">
+          <div><label>Producto:</label><input type="text" id="sal-nombre" list="lista-inventario" onchange="verificarSiExiste('sal')" required></div>
+          <div><label>Tipo:</label><input type="text" id="sal-tipo" readonly></div>
+          <div><label>Unidad de Medida:</label><input type="text" id="sal-unidad" readonly></div>
+          <div><label>Cantidad:</label><input type="number" step="0.01" id="sal-cantidad" required oninput="calcularTotal('sal')"></div>
+          <div><label>Precio:</label><input type="number" step="0.01" id="sal-precio" readonly oninput="calcularTotal('sal')"></div>
+          <div><label>Total:</label><input type="number" id="sal-total" readonly></div>
+          <div><label>Orden Producción:</label><input type="text" id="sal-orden" required></div>
+          <div><label>Se entrega a:</label><select id="sal-entregoa" required></select></div>
+          <div style="grid-column: span 2;"><label>Descripción:</label><input type="text" id="sal-descripcion"></div>
+        </div>
+        <button type="button" class="btn btn-accion" onclick="guardarTransaccion('SALIDA')">Registrar Salida</button>
+      </form>
+    </div>
+
+    <datalist id="lista-inventario"></datalist>
+  </div>
+
+  <!-- ==========================================
+       MÓDULO: ENLACE Y LÓGICA DE CONTROL (JS)
+       ========================================== -->
+  <script>
+    // -------------------------------------------------------------
+    // ENLACE CRÍTICO: COPIA Y PEGA AQUÍ TU URL DE LA APP WEB DE APPS SCRIPT
+    // -------------------------------------------------------------
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwh7SGky3vcG--129eEyAZl0Ap911OZIPYym5QvA48ntA6C8bW3-f8M7nAcZC3Qnh4fvQ/exec";
+
+    let timerInactividad;
+    const TIEMPO_EXPIRACION = 3600000; // 1 hora
+    let datosCargados = {};
+
+    // MÓDULO DE CONEXIÓN NUEVO (Reemplaza de forma nativa a google.script.run)
+    async function ejecutarPeticionAPI(action, data = {}) {
+      try {
+        let respuesta = await fetch(SCRIPT_URL, {
+          method: 'POST',
+          mode: 'cors', // Permite saltar bloqueos de origen cruzado
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // Evita preflight complejo en GAS
+          body: JSON.stringify({ action: action, data: data })
+        });
+        return await respuesta.json();
+      } catch (error) {
+        console.error("Error en enlace de API:", error);
+        return { success: false, message: "Error al conectar con la base de datos distribuida." };
+      }
+    }
+
+    // LISTENER UI FILTROS
+    document.getElementById('busq-especifica').addEventListener('change', function() {
+      let inputEsp = document.getElementById('busq-val-especifico');
+      if (this.value) { inputEsp.style.style.display = 'block'; } 
+      else { inputEsp.style.display = 'none'; inputEsp.value = ''; }
+    });
+
+    // CONTROL INACTIVIDAD
+    function resetTimer() {
+      clearTimeout(timerInactividad);
+      if (document.getElementById('app-container').style.display === 'block') {
+        timerInactividad = setTimeout(cerrarSesion, TIEMPO_EXPIRACION);
+      }
+    }
+    window.onload = resetTimer; document.onmousemove = resetTimer; document.onkeypress = resetTimer;
+
+    // LOGIN
+    async function iniciarSesion() {
+      let u = document.getElementById('user').value;
+      let p = document.getElementById('pass').value;
+      document.getElementById('msg-login').innerText = "Validando credenciales...";
+      
+      let res = await ejecutarPeticionAPI('loginUsuario', { usuario: u, password: p });
+      
+      if (res.success) {
+        document.getElementById('form-login').reset();
+        document.getElementById('login-container').style.display = 'none';
+        document.getElementById('app-container').style.display = 'block';
+        cargarDatosMaestros();
+        resetTimer();
+      } else {
+        document.getElementById('msg-login').innerText = res.message;
+      }
+    }
+
+    function cerrarSesion() {
+      document.getElementById('app-container').style.display = 'none';
+      document.getElementById('login-container').style.display = 'block';
+      document.getElementById('msg-login').innerText = "Sesión cerrada de forma segura.";
+      document.getElementById('form-ingresos').reset();
+      document.getElementById('form-salidas').reset();
+      document.getElementById('busq-texto').value = '';
+      document.getElementById('tabla-head').innerHTML = '';
+      document.getElementById('tabla-body').innerHTML = '';
+      clearTimeout(timerInactividad);
+    }
+
+    function cambiarPestana(id) {
+      document.querySelectorAll('.seccion').forEach(s => s.classList.remove('active'));
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.getElementById('sec-' + id).classList.add('active');
+      event.target.classList.add('active');
+    }
+
+    // CARGA DE LISTAS DESPLEGABLES
+    async function cargarDatosMaestros() {
+      let res = await ejecutarPeticionAPI('obtenerDatosFormularios');
+      datosCargados = res;
+      
+      let dl = document.getElementById('lista-inventario');
+      dl.innerHTML = '';
+      res.inventario.forEach(item => {
+        let opt = document.createElement('option'); opt.value = item.nombre; dl.appendChild(opt);
+      });
+
+      let optionsRH = '<option value="">Seleccione...</option><optgroup label="Áreas">';
+      res.areas.forEach(a => optionsRH += `<option value="${a}">${a}</option>`);
+      optionsRH += '</optgroup><optgroup label="Personal">';
+      res.personal.forEach(p => optionsRH += `<option value="${p}">${p}</option>`);
+      optionsRH += '</optgroup>';
+      
+      document.getElementById('ing-entregoa').innerHTML = optionsRH;
+      document.getElementById('sal-entregoa').innerHTML = optionsRH;
+    }
+
+    // BUSCADOR
+    async function ejecutarBusqueda() {
+      let texto = document.getElementById('busq-texto').value;
+      if (texto.length < 3) { alert("Ingresa mínimo 3 letras."); return; }
+
+      document.getElementById('tabla-body').innerHTML = '<tr><td>Buscando en la base de datos...</td></tr>';
+      
+      let res = await ejecutarPeticionAPI('buscarEnInventario', {
+        texto: texto,
+        filtroGeneral: document.getElementById('busq-general').value,
+        filtroEspecifico: document.getElementById('busq-especifica').value,
+        valorEspecifico: document.getElementById('busq-val-especifico').value
+      });
+
+      let thead = ''; res.cabeceras.forEach(c => thead += `<th>${c}</th>`);
+      document.getElementById('tabla-head').innerHTML = thead;
+      
+      let tbody = '';
+      if (res.data.length === 0) { tbody = '<tr><td colspan="15">Sin coincidencias</td></tr>'; } 
+      else {
+        res.data.forEach(f => {
+          tbody += '<tr>';
+          f.forEach(c => tbody += `<td>${c && c.toString().includes('GMT') ? new Date(c).toLocaleDateString() : c}</td>`);
+          tbody += '</tr>';
+        });
+      }
+      document.getElementById('tabla-body').innerHTML = tbody;
+    }
+
+    function verificarSiExiste(prefijo) {
+      let val = document.getElementById(prefijo + '-nombre').value;
+      let item = datosCargados.inventario.find(i => i.nombre.toLowerCase() === val.toLowerCase());
+      
+      if (prefijo === 'ing') {
+        let aviso = document.getElementById('ing-aviso');
+        aviso.innerText = item ? "Producto EXISTENTE: Se sumará al stock." : "NUEVO PRODUCTO: Se creará.";
+        aviso.style.color = item ? "var(--color-primario)" : "var(--color-exito)";
+      } else if (prefijo === 'sal' && !item) {
+        alert("El producto no existe."); document.getElementById('sal-nombre').value = '';
+      }
+    }
+
+    function calcularTotal(prefijo) {
+      let c = parseFloat(document.getElementById(prefijo + '-cantidad').value) || 0;
+      let p = parseFloat(document.getElementById(prefijo + '-precio').value) || 0;
+      document.getElementById(prefijo + '-total').value = (c * p).toFixed(2);
+    }
+
+    // TRANSACCIONES (INGRESO / SALIDA)
+    async function guardarTransaccion(tipoTx) {
+      let prefijo = tipoTx === 'INGRESO' ? 'ing' : 'sal';
+      let nombre = document.getElementById(prefijo + '-nombre').value;
+      if (!nombre) return alert("Nombre requerido");
+
+      let datos = {
+        tipo: document.getElementById(prefijo + '-tipo').value || '',
+        movimiento: tipoTx, nombre: nombre,
+        unidad: document.getElementById(prefijo + '-unidad').value || '',
+        medidas: document.getElementById(prefijo + '-medidas') ? document.getElementById(prefijo + '-medidas').value : '',
+        densidad: document.getElementById(prefijo + '-densidad') ? document.getElementById(prefijo + '-densidad').value : '',
+        cantidad: document.getElementById(prefijo + '-cantidad').value,
+        precio: document.getElementById(prefijo + '-precio').value || 0,
+        total: document.getElementById(prefijo + '-total').value || 0,
+        proveedor: document.getElementById(prefijo + '-proveedor') ? document.getElementById(prefijo + '-proveedor').value : '',
+        descripcion: document.getElementById(prefijo + '-descripcion').value || '',
+        entregoA: document.getElementById(prefijo + '-entregoa').value,
+        esNuevo: tipoTx === 'INGRESO' ? !datosCargados.inventario.find(i => i.nombre.toLowerCase() === nombre.toLowerCase()) : false
+      };
+      if (tipoTx === 'SALIDA') datos.ordenProd = document.getElementById('sal-orden').value;
+
+      let btn = event.target; btn.disabled = true;
+
+      let res = await ejecutarPeticionAPI('procesarTransaccion', { tipoTx: tipoTx, datos: datos });
+      
+      btn.disabled = false;
+      alert(res.message);
+      if (res.success) {
+        document.getElementById('form-' + (tipoTx==='INGRESO'?'ingresos':'salidas')).reset();
+        if(document.getElementById('ing-aviso')) document.getElementById('ing-aviso').innerText = '';
+        cargarDatosMaestros();
+      }
+    }
+  </script>
+</body>
+</html>
