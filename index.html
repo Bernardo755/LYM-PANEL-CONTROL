@@ -67,13 +67,27 @@
     .seccion { display: none; }
     .seccion.active { display: block; }
     .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+
+/* NUEVA CLASE PARA EL LOGO */
+.logo-empresa {
+  display: block;
+  margin: 0 auto 15px auto; /* Centra el logo y le da margen abajo */
+  max-width: 140px;         /* Controla el ancho máximo (ajústalo a tu gusto) */
+  height: auto;             /* Mantiene la proporción de la imagen */
+  object-fit: contain;
+}
+    
   </style>
 </head>
 <body>
 
   <!-- VISTA 1: INGRESO -->
   <div id="login-container" class="panel">
-    <h2 style="text-align: center;">Acceso al Sistema</h2>
+    <!-- CÓDIGO AGREGADO: -->
+  <img src="LYM.PNG" alt="Logo Empresa" class="logo-empresa">
+  <h2 style="text-align: center;">ACCESO DE SISTEMA</h2>
+  <form id="form-login" autocomplete="off" onsubmit="event.preventDefault(); iniciarSesion();">
+    <h2 style="text-align: center;">AACCESO DE SISTEMA</h2>
     <form id="form-login" autocomplete="off" onsubmit="event.preventDefault(); iniciarSesion();">
       <label>Usuario:</label>
       <input type="text" id="user" required>
@@ -87,7 +101,11 @@
   <!-- VISTA 2: APLICACIÓN -->
   <div id="app-container">
     <button class="btn btn-salir" onclick="cerrarSesion()">Cerrar Sesión</button>
-    <h2>Consola de Administración</h2>
+    <!-- CÓDIGO AGREGADO: -->
+  <img src="LYM.PNG" alt="Logo Empresa" class="logo-empresa" style="margin: 0 0 20px 0; float: left; max-width: 80px;">
+  
+  <h2 style="clear: both;">Consola de Administración</h2>
+    <!--<h2>Consola de Administración</h2>-->
     
     <div class="nav-tabs">
       <div class="tab active" onclick="cambiarPestana('buscador')">Buscador</div>
