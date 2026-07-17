@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Sistema de Gestión</title>
+  <title>Sistema de Gestión LYM</title>
   
   <!-- ==========================================
        MÓDULO: ESTILOS (CSS CONFIGURABLE)
@@ -95,11 +95,12 @@
       <div class="tab" onclick="cambiarPestana('salidas')">Registrar Salida</div>
     </div>
 
-    <!-- SECCIÓN: BUSCADOR -->
+    <!-- SECCIÓN: BUSCADOR (CON FILTROS ESPECÍFICOS MEJORADOS) -->
     <div id="sec-buscador" class="seccion active panel">
       <h3>Buscar en Inventario</h3>
       <div style="display: flex; gap: 10px; align-items: center;">
         <input type="text" id="busq-texto" placeholder="Buscar producto (Mín. 3 letras)...">
+        
         <select id="busq-general">
           <option value="TODO">Búsqueda en todo</option>
           <option value="espuma">Espuma</option>
@@ -108,12 +109,16 @@
           <option value="madera">Madera</option>
           <option value="tornilleria">Tornillería</option>
         </select>
+        
         <select id="busq-especifica">
           <option value="">Sin filtro específico</option>
           <option value="MEDIDAS">Medidas</option>
           <option value="DENSIDAD">Densidad</option>
         </select>
-        <input type="text" id="busq-val-especifico" placeholder="Valor" style="display:none;">
+        
+        <!-- MODIFICADO: Ahora es un Select dinámico en vez de un Input Text -->
+        <select id="busq-val-especifico" style="display:none;"></select>
+        
         <button class="btn" onclick="ejecutarBusqueda()">Buscar</button>
       </div>
       <div style="overflow-x: auto;">
@@ -174,19 +179,18 @@
     // -------------------------------------------------------------
     // ENLACE CRÍTICO: COPIA Y PEGA AQUÍ TU URL DE LA APP WEB DE APPS SCRIPT
     // -------------------------------------------------------------
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwh7SGky3vcG--129eEyAZl0Ap911OZIPYym5QvA48ntA6C8bW3-f8M7nAcZC3Qnh4fvQ/exec";
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw3DzKJi4xi3G-dH6-MnkCOo_J4wKONIzI6GuEOMekVU1oZKaiC0_b2ZhXWYH9SQwmOJg/exec";
 
     let timerInactividad;
     const TIEMPO_EXPIRACION = 3600000; // 1 hora
     let datosCargados = {};
 
-    // MÓDULO DE CONEXIÓN NUEVO (Reemplaza de forma nativa a google.script.run)
     async function ejecutarPeticionAPI(action, data = {}) {
       try {
         let respuesta = await fetch(SCRIPT_URL, {
           method: 'POST',
-          mode: 'cors', // Permite saltar bloqueos de origen cruzado
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // Evita preflight complejo en GAS
+          mode: 'cors',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({ action: action, data: data })
         });
         return await respuesta.json();
@@ -196,11 +200,28 @@
       }
     }
 
-    // LISTENER UI FILTROS
+    // MODIFICADO: LISTENER INTELIGENTE PARA CONTROLAR EL DESPLEGABLE DE BUSQUEDA ESPECÍFICA
     document.getElementById('busq-especifica').addEventListener('change', function() {
-      let inputEsp = document.getElementById('busq-val-especifico');
-      if (this.value) { inputEsp.style.style.display = 'block'; } 
-      else { inputEsp.style.display = 'none'; inputEsp.value = ''; }
+      let selectVal = document.getElementById('busq-val-especifico');
+      let filtro = this.value;
+      
+      selectVal.innerHTML = ''; // Vaciar opciones previas
+      
+      if (!filtro) {
+        selectVal.style.display = 'none';
+        return;
+      }
+      
+      // Decidir si arrastrar las medidas o las densidades que cargamos en caché
+      let fuenteValores = (filtro === 'MEDIDAS') ? datosCargados.medidas : datosCargados.densidades;
+      
+      let opcionesHTML = ['<option value="">Selecciona un valor disponible...</option>'];
+      fuenteValores.forEach(valor => {
+        opcionesHTML.push(`<option value="${valor}">${valor}</option>`);
+      });
+      
+      selectVal.innerHTML = opcionesHTML.join('');
+      selectVal.style.display = 'block'; // Mostrar el nuevo list box renderizado
     });
 
     // CONTROL INACTIVIDAD
@@ -238,6 +259,8 @@
       document.getElementById('form-ingresos').reset();
       document.getElementById('form-salidas').reset();
       document.getElementById('busq-texto').value = '';
+      document.getElementById('busq-especifica').value = '';
+      document.getElementById('busq-val-especifico').style.display = 'none';
       document.getElementById('tabla-head').innerHTML = '';
       document.getElementById('tabla-body').innerHTML = '';
       clearTimeout(timerInactividad);
@@ -253,7 +276,7 @@
     // CARGA DE LISTAS DESPLEGABLES
     async function cargarDatosMaestros() {
       let res = await ejecutarPeticionAPI('obtenerDatosFormularios');
-      datosCargados = res;
+      datosCargados = res; // Guardamos en caché local para usar al cambiar filtros
       
       let dl = document.getElementById('lista-inventario');
       dl.innerHTML = '';
@@ -282,7 +305,7 @@
         texto: texto,
         filtroGeneral: document.getElementById('busq-general').value,
         filtroEspecifico: document.getElementById('busq-especifica').value,
-        valorEspecifico: document.getElementById('busq-val-especifico').value
+        valorEspecifico: document.getElementById('busq-val-especifico').value // Toma el valor seleccionado de la lista
       });
 
       let thead = ''; res.cabeceras.forEach(c => thead += `<th>${c}</th>`);
@@ -350,7 +373,7 @@
       if (res.success) {
         document.getElementById('form-' + (tipoTx==='INGRESO'?'ingresos':'salidas')).reset();
         if(document.getElementById('ing-aviso')) document.getElementById('ing-aviso').innerText = '';
-        cargarDatosMaestros();
+        cargarDatosMaestros(); // Refresca listas locales incluyendo las nuevas medidas/densidades si se agregó un ingreso nuevo
       }
     }
   </script>
